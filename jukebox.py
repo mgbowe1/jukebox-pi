@@ -2,6 +2,8 @@ import time,sys
 import pygame
 import grovepi
 
+# BEGIN GrovePi code
+
 if sys.platform == 'uwp':
     import winrt_smbus as smbus
     bus = smbus.SMBus(1)
@@ -51,7 +53,9 @@ def setText(text):
                 continue
         count += 1
         bus.write_byte_data(DISPLAY_TEXT_ADDR,0x40,ord(c))
-		
+
+# END GrovePi code
+	
 playlists = ["EDM", "Acoustic", "Orchestra", "Upbeat", "Jazz"]
 
 
