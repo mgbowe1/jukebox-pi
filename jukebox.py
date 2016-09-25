@@ -60,7 +60,6 @@ playlists = ["EDM", "Acoustic", "Orchestra", "Upbeat", "Jazz"]
 
 
 def run():
-    #playOrPause = "PLAY"
     jukebox     = Jukebox(playlists)
     up, down, select, pcounter, selectedCounter = 2, 3, 4, 0, None
     grovepi.pinMode(up, "INPUT")
@@ -68,48 +67,36 @@ def run():
     grovepi.pinMode(select, "INPUT")
     
     while True:
-        #print "running"
         if grovepi.digitalRead(up) > 0:
             if pcounter > 0:
                 pcounter -= 1
             else:
                 pcounter = jukebox.getSize() - 1
             jukebox.display_text(pcounter)
-            print "up" # Print for debugging purposes
+            print "up" 
                 
         elif grovepi.digitalRead(down) > 0:
             if pcounter < jukebox.getSize() - 1:
                 pcounter += 1
             else:
                 pcounter = 0;
-            print "down" # Print for debugging purposes
+            print "down" 
             jukebox.display_text(pcounter)
             
         elif grovepi.digitalRead(select) > 0:
-            #time.sleep(0.5)
-            #if grovepi.digitalRead(select) > 0: # double tap to cut song
-                #pass
-                #print "double tap"
-            if True:
-                print "pcounter = ", pcounter, " selectedcounter = ",
-                print selectedCounter
-                if pcounter == selectedCounter:
-                    print "pausing playlist", jukebox.playlists[pcounter]
-                    selectedCounter = None
-                    jukebox.pauseIt()
-                else:
-                    print "playing playlist", jukebox.playlists[pcounter]
-                    selectedCounter = pcounter
-                    jukebox.playmusic(pcounter)
+            print "pcounter = ", pcounter, " selectedcounter = ",
+            print selectedCounter
+            if pcounter == selectedCounter:
+                print "pausing playlist", jukebox.playlists[pcounter]
+                selectedCounter = None
+                jukebox.pauseIt()
+            else:
+                print "playing playlist", jukebox.playlists[pcounter]
+                selectedCounter = pcounter
+                jukebox.playmusic(pcounter)
             jukebox.display_text(pcounter)
             
-        '''
-        else:
-            print
-            print "reading for up    : ", grovepi.digitalRead(up)
-            print "reading for down  : ", grovepi.digitalRead(down)
-            print "reading for select: ", grovepi.digitalRead(select)
-        '''
+
             
         time.sleep(0.1)
 
@@ -126,13 +113,15 @@ class Jukebox:
     def isPlaying(self):
         return self.playing
     def playmusic(self, pcounter):
-        self.playingCounter = pcounter
-        pygame.init()
-        pygame.mixer.music.load("test.mp3")
-        pygame.mixer.music.play()
+        if self.playingCounter == pcounter:
+            pygame.mixer.music.unpause()
+        else:
+            self.playingCounter = pcounter
+            pygame.init()
+            pygame.mixer.music.load(self.playlists[pcounter] + "/song.mp3")
+            pygame.mixer.music.play()
         self.playing = True
     def pauseIt(self):
-        self.playingCounter = None
         self.playing = False
         pygame.mixer.music.pause()
     def display_text(self, pcounter):
@@ -142,8 +131,8 @@ class Jukebox:
             |Top 40          PLAY|
             |EDM                 |
             ----------------------
-        Takes two paramters. pcounter is an int and playOrPause is a string of
-        either "Play" or "Pause".
+        Takes two paramters. pcounter points to the playlist the user is
+        currently looking at.
         '''
         # "PAUSE" if user navigated to a track that is currently being played.
         # "PLAY" otherwise.
