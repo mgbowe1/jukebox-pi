@@ -51,87 +51,114 @@ def setText(text):
                 continue
         count += 1
         bus.write_byte_data(DISPLAY_TEXT_ADDR,0x40,ord(c))
-
-#Update the display without erasing the display
-def setText_norefresh(text):
-    textCommand(0x02) # return home
-    time.sleep(.05)
-	
-    textCommand(0x08 | 0x04) # display on, no cursor
-    textCommand(0x28) # 2 lines
-    time.sleep(.05)
-    count = 0
-    row = 0
-    for c in text:
-        if c == '\n' or count == 16:
-            count = 0
-            row += 1
-            if row == 2:
-                break
-            textCommand(0xc0)
-            if c == '\n':
-                continue
-        count += 1
-        bus.write_byte_data(DISPLAY_TEXT_ADDR,0x40,ord(c))
 		
-# example code
-if __name__=="__main__":
-    isPaused = True
-    genre_playlists = ["Top 40", "EDM", "Instr EDM", "Orchestra", "Classical", ""]
-    setRGB(255, 128, 0)
-    chrPlayPause = ''
-    if isPaused == False:
-        chrPlayPause = "Pause"
-    else:
-        chrPlayPause = "Play"
-    up = 2
-    down = 3
-    select = 4
-    pcounter = 0
-    selectedCounter = 0
+playlists = ["EDM", "Acoustic", "Orchestra", "Upbeat", "Jazz"]
+
+
+def run():
+    #playOrPause = "PLAY"
+    jukebox     = Jukebox(playlists)
+    up, down, select, pcounter, selectedCounter = 2, 3, 4, 0, None
     grovepi.pinMode(up, "INPUT")
     grovepi.pinMode(down, "INPUT")
     grovepi.pinMode(select, "INPUT")
-    pygame.init()
-    pygame.mixer.music.load("test.mp3")
-    spaces1 = " " * (16 - len(genre_playlists[pcounter]) - len(chrPlayPause))
-            
-    spaces2 = " " * (16 - len(genre_playlists[pcounter + 1]) - len(chrPlayPause))
-    setText(genre_playlists[pcounter] + spaces1 + chrPlayPause +
-            genre_playlists[pcounter + 1] + spaces2 + " ")
+    
     while True:
+        #print "running"
         if grovepi.digitalRead(up) > 0:
             if pcounter > 0:
                 pcounter -= 1
-            spaces1 = " " * (16 - len(genre_playlists[pcounter]) - len(chrPlayPause))
-            spaces2 = " " * (16 - len(genre_playlists[pcounter + 1]) - len(chrPlayPause))
-            setText(genre_playlists[pcounter] + spaces1 + chrPlayPause +
-                    genre_playlists[pcounter + 1] + spaces2 + " ")
-            print "up"
-        if grovepi.digitalRead(down) > 0:
-            if pcounter < 4:
-                pcounter += 1
-            spaces1 = " " * (16 - len(genre_playlists[pcounter]) - len(chrPlayPause))
-            spaces2 = " " * (16 - len(genre_playlists[pcounter + 1]) - len(chrPlayPause))
-            setText(genre_playlists[pcounter] + spaces1 + chrPlayPause +
-                    genre_playlists[pcounter + 1] + spaces2 + " ")
-            print "down"
-        if grovepi.digitalRead(select) > 0:
-            if pcounter == selectedCounter:
-                if isPaused:
-                    pygame.mixer.music.play()
-                    isPaused = False
-                    chrPlayPause = "Pause"
-                else:
-                    pygame.mixer.music.pause()
-                    isPaused = True
-                    chrPlayPause = "Play"
             else:
-                selectedCounter = pcounter
-                isPaused = False
-                pygame.mixer.music.play()
-                chrPlayPause = "Pause"
+                pcounter = jukebox.getSize() - 1
+            jukebox.display_text(pcounter)
+            print "up" # Print for debugging purposes
                 
-            print "select"
+        elif grovepi.digitalRead(down) > 0:
+            if pcounter < jukebox.getSize() - 1:
+                pcounter += 1
+            else:
+                pcounter = 0;
+            print "down" # Print for debugging purposes
+            jukebox.display_text(pcounter)
+            
+        elif grovepi.digitalRead(select) > 0:
+            #time.sleep(0.5)
+            #if grovepi.digitalRead(select) > 0: # double tap to cut song
+                #pass
+                #print "double tap"
+            if True:
+                print "pcounter = ", pcounter, " selectedcounter = ",
+                print selectedCounter
+                if pcounter == selectedCounter:
+                    print "pausing playlist", jukebox.playlists[pcounter]
+                    selectedCounter = None
+                    jukebox.pauseIt()
+                else:
+                    print "playing playlist", jukebox.playlists[pcounter]
+                    selectedCounter = pcounter
+                    jukebox.playmusic(pcounter)
+            jukebox.display_text(pcounter)
+            
+        '''
+        else:
+            print
+            print "reading for up    : ", grovepi.digitalRead(up)
+            print "reading for down  : ", grovepi.digitalRead(down)
+            print "reading for select: ", grovepi.digitalRead(select)
+        '''
+            
         time.sleep(0.1)
 
+
+class Jukebox:
+    def __init__(self, playlists):
+        self.playlists      = playlists
+        self.playing        = False
+        self.playingCounter = None
+        setRGB(255, 128, 0)
+        self.display_text(0)
+    def getSize(self):
+        return len(self.playlists)
+    def isPlaying(self):
+        return self.playing
+    def playmusic(self, pcounter):
+        self.playingCounter = pcounter
+        pygame.init()
+        pygame.mixer.music.load("test.mp3")
+        pygame.mixer.music.play()
+        self.playing = True
+    def pauseIt(self):
+        self.playingCounter = None
+        self.playing = False
+        pygame.mixer.music.pause()
+    def display_text(self, pcounter):
+        '''
+        Display text on to the Grove LCD in the following format:
+            ----------------------
+            |Top 40          PLAY|
+            |EDM                 |
+            ----------------------
+        Takes two paramters. pcounter is an int and playOrPause is a string of
+        either "Play" or "Pause".
+        '''
+        # "PAUSE" if user navigated to a track that is currently being played.
+        # "PLAY" otherwise.
+        if self.isPlaying() and pcounter == self.playingCounter:
+            playOrPause = "PAUSE"
+        else:
+            playOrPause = "PLAY"
+        # The display of playlists wraps around.
+        if pcounter == self.getSize() - 1:
+            nextpcounter = 0
+        else:
+            nextpcounter = pcounter + 1
+        spaces1 = " " * (16 - len(playlists[pcounter]) - len(playOrPause))
+
+        
+        setText(playlists[pcounter] + spaces1 + playOrPause +
+                playlists[nextpcounter])
+        
+
+
+if __name__ == "__main__":
+    run()
